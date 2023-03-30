@@ -10,6 +10,19 @@ resources.load("compute_mat", Material, (err, material) => {
     csMat = material;
 });
 
+export function buildNativeCopyPass(camera: renderer.scene.Camera, ppl: rendering.Pipeline) {
+    const area = getRenderArea(camera, camera.window.width, camera.window.height);
+    const width = area.width;
+    const height = area.height;
+
+    if (!ppl.containsResource('forwardColor_copy')) {
+        ppl.addRenderTarget('forwardColor_copy', gfx.Format.RGBA8, width, height, rendering.ResourceResidency.MANAGED);
+    }
+
+    const cc = ppl.addCopyPass();
+    cc.addPair(new rendering.CopyPair('forwardColor', 'forwardColor_copy', 1, 1, 0, 0, 0, 0, 0, 0));
+}
+
 export function buildNativeComputePass (camera: renderer.scene.Camera, ppl: rendering.Pipeline) {
     const area = getRenderArea(camera, camera.window.width, camera.window.height);
     if (!ppl.containsResource("shadingRate")) {
@@ -66,12 +79,12 @@ export function buildNativeForwardPass (camera, ppl: rendering.Pipeline) {
             gfx.StoreOp.STORE,
             getClearFlags(rendering.AttachmentType.DEPTH_STENCIL, camera.clearFlag, cameraDepthStencilLoadOp),
             new gfx.Color(camera.clearDepth, camera.clearStencil, 0, 0)));
-    forwardPass.addRasterView('shadingRate',
-        new rendering.RasterView('_',
-            rendering.AccessType.READ, rendering.AttachmentType.SHADING_RATE,
-            gfx.LoadOp.LOAD, gfx.StoreOp.DISCARD,
-            gfx.ClearFlagBit.NONE,
-            new gfx.Color(0, 0, 0, 0)));
+    // forwardPass.addRasterView('shadingRate',
+    //     new rendering.RasterView('_',
+    //         rendering.AccessType.READ, rendering.AttachmentType.SHADING_RATE,
+    //         gfx.LoadOp.LOAD, gfx.StoreOp.DISCARD,
+    //         gfx.ClearFlagBit.NONE,
+    //         new gfx.Color(0, 0, 0, 0)));
 
     forwardPass
         .addQueue(rendering.QueueHint.RENDER_OPAQUE)
@@ -125,10 +138,13 @@ export class TestCustomPipeline implements rendering.PipelineBuilder {
             buildWebPipeline(cameras, pipeline);
         } else if (csMat != null) {
             // compute pass
-            buildNativeComputePass(cameras[0], pipeline);
+            // buildNativeComputePass(cameras[0], pipeline);
 
             // forwrad pass
             buildNativeForwardPass(cameras[0], pipeline);
+
+            // copy backbuffer
+            buildNativeCopyPass(cameras[0], pipeline);
         }
     }
 }
