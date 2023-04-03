@@ -1,4 +1,4 @@
-import { _decorator, rendering, renderer, game, Game, gfx, resources, Material, instantiate } from 'cc';
+import { _decorator, rendering, renderer, game, Game, gfx, resources, Material, instantiate, Vec4 } from 'cc';
 import { JSB } from 'cc/env';
 import { AntiAliasing,
     buildForwardPass, buildBloomPasses, buildFxaaPass, buildPostprocessPass, buildUIPass,
@@ -39,6 +39,31 @@ export function buildNativeComputePass (camera: renderer.scene.Camera, ppl: rend
     tc.addComputeView("shadingRate", computeView2);
 
     tc.addQueue().addDispatch(8, 8, 1, csMat, 0);
+
+    let buffer = new ArrayBuffer(4 * 16);
+    let view = new Float32Array(buffer);
+    view[0] = 1.0;
+    view[1] = 2.0;
+    view[2] = 3.0;
+    view[3] = 4.0;
+    
+    view[4] = 5.0;
+    view[5] = 6.0;
+    view[6] = 7.0;
+    view[7] = 8.0;
+
+    view[8] = 9.0;
+    view[9] = 10.0;
+    view[10] = 11.0;
+    view[11] = 12.0;
+
+    view[12] = 13.0;
+    view[13] = 14.0;
+    view[14] = 15.0;
+    view[15] = 16.0;
+
+    tc.setVec4("factor1", new Vec4(1, 1, 1, 1));
+    tc.setArrayBuffer("factor2", buffer);
 }
 
 export function buildNativeForwardPass (camera, ppl: rendering.Pipeline) {
@@ -79,12 +104,12 @@ export function buildNativeForwardPass (camera, ppl: rendering.Pipeline) {
             gfx.StoreOp.STORE,
             getClearFlags(rendering.AttachmentType.DEPTH_STENCIL, camera.clearFlag, cameraDepthStencilLoadOp),
             new gfx.Color(camera.clearDepth, camera.clearStencil, 0, 0)));
-    // forwardPass.addRasterView('shadingRate',
-    //     new rendering.RasterView('_',
-    //         rendering.AccessType.READ, rendering.AttachmentType.SHADING_RATE,
-    //         gfx.LoadOp.LOAD, gfx.StoreOp.DISCARD,
-    //         gfx.ClearFlagBit.NONE,
-    //         new gfx.Color(0, 0, 0, 0)));
+    forwardPass.addRasterView('shadingRate',
+        new rendering.RasterView('_',
+            rendering.AccessType.READ, rendering.AttachmentType.SHADING_RATE,
+            gfx.LoadOp.LOAD, gfx.StoreOp.DISCARD,
+            gfx.ClearFlagBit.NONE,
+            new gfx.Color(0, 0, 0, 0)));
 
     forwardPass
         .addQueue(rendering.QueueHint.RENDER_OPAQUE)
@@ -138,13 +163,13 @@ export class TestCustomPipeline implements rendering.PipelineBuilder {
             buildWebPipeline(cameras, pipeline);
         } else if (csMat != null) {
             // compute pass
-            // buildNativeComputePass(cameras[0], pipeline);
+            buildNativeComputePass(cameras[0], pipeline);
 
             // forwrad pass
             buildNativeForwardPass(cameras[0], pipeline);
 
             // copy backbuffer
-            buildNativeCopyPass(cameras[0], pipeline);
+            // buildNativeCopyPass(cameras[0], pipeline);
         }
     }
 }

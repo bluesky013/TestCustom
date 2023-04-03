@@ -6,23 +6,30 @@ CCEffect %{
       pass: test-compute
 }%
 
+
 CCProgram test-cs %{
   precision highp float;
 
   layout (local_size_x = 32, local_size_y = 32) in;
 
+  #pragma rate ubo pass
+  layout (set = 0, binding = 0) uniform ubo {
+    vec4 factor1;
+    vec4 factor2[4];
+  };
+
   #pragma rate shading_buffer pass
-  layout (set = 0, binding = 0) buffer shading_buffer {
+  layout (set = 0, binding = 1) buffer shading_buffer {
     uvec4 data[];
   };
 
   #pragma rate shading_rate pass
-  layout (set = 0, binding = 1, r8ui) uniform uimage2D shading_rate;
-
+  layout (set = 0, binding = 2, r8ui) uniform uimage2D shading_rate;
+  
   void main () {
     ivec2 coord = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
 
     imageStore(shading_rate, coord, uvec4(3, 0, 0, 0));
-    data[gl_GlobalInvocationID.x] = uvec4(3, 0, 0, 0);
+    data[gl_GlobalInvocationID.x] = uvec4(3, 0, 0, 0) + uvec4(0, uvec3(factor1.xyz));
   }
 }%
