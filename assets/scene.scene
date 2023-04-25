@@ -58,7 +58,7 @@
     "_globals": {
       "__id__": 10
     },
-    "_id": "20addac1-c034-4f43-8bd8-9068c03d8827"
+    "_id": "1c762aa5-d4ea-4d09-a481-8acbc0b6f08d"
   },
   {
     "__type__": "cc.Node",
@@ -171,9 +171,9 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": -10,
-      "y": 10,
-      "z": 10
+      "x": -5,
+      "y": 5,
+      "z": 5
     },
     "_lrot": {
       "__type__": "cc.Quat",
@@ -283,7 +283,7 @@
       "y": 0,
       "z": 0
     },
-    "_id": "01Onp3+zJJjqQKc1ALeO0x"
+    "_id": "09HbUTyRpNrobvXuqqA9ZF"
   },
   {
     "__type__": "cc.MeshRenderer",
@@ -296,7 +296,7 @@
     "__prefab": null,
     "_materials": [
       {
-        "__uuid__": "620b6bf3-0369-4560-837f-2a2c00b73c26",
+        "__uuid__": "75dca04e-ff42-4bc4-b5ce-dd1dd9befb12",
         "__expectedType__": "cc.Material"
       }
     ],
@@ -314,7 +314,7 @@
     "_shadowNormalBias": 0,
     "_reflectionProbeId": -1,
     "_enableMorph": true,
-    "_id": "afCC4I2Y9CnYLY5l63XCJM"
+    "_id": "b6+ciQaGpM/oJIv3Hkz/jd"
   },
   {
     "__type__": "cc.ModelBakeSettings",

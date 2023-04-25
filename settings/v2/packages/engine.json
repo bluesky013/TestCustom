@@ -158,6 +158,6 @@
     }
   },
   "macroConfig": {
-    "CUSTOM_PIPELINE_NAME": "Custom"
+    "CUSTOM_PIPELINE_NAME": "CustomTest"
   }
 }

@@ -1,3 +1,11 @@
 {
-  "__version__": "1.3.4"
+  "__version__": "1.3.5",
+  "textureCompressConfig": {
+    "userPreset": {
+      "9bT/q7BIFB5YGo0N7w6tkr": {
+        "name": "t",
+        "options": {}
+      }
+    }
+  }
 }

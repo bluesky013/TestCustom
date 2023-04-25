@@ -2,6 +2,7 @@ import { _decorator, rendering, renderer, game, Game, gfx, resources, Material, 
 import { JSB } from 'cc/env';
 import { AntiAliasing,
     buildForwardPass, buildBloomPasses, buildFxaaPass, buildPostprocessPass, buildUIPass,
+    buildNativeForwardPass,
     isUICamera, decideProfilerCamera, getRenderArea, getLoadOpOfClearFlag, getClearFlags } from './PassUtils';
 
 let csMat: Material = null;
@@ -66,7 +67,7 @@ export function buildNativeComputePass (camera: renderer.scene.Camera, ppl: rend
     tc.setArrayBuffer("factor2", buffer);
 }
 
-export function buildNativeForwardPass (camera, ppl: rendering.Pipeline) {
+export function buildNativeForwardPass2 (camera, ppl: rendering.Pipeline) {
     const area = getRenderArea(camera, camera.window.width, camera.window.height);
     const width = area.width;
     const height = area.height;
@@ -104,12 +105,12 @@ export function buildNativeForwardPass (camera, ppl: rendering.Pipeline) {
             gfx.StoreOp.STORE,
             getClearFlags(rendering.AttachmentType.DEPTH_STENCIL, camera.clearFlag, cameraDepthStencilLoadOp),
             new gfx.Color(camera.clearDepth, camera.clearStencil, 0, 0)));
-    forwardPass.addRasterView('shadingRate',
-        new rendering.RasterView('_',
-            rendering.AccessType.READ, rendering.AttachmentType.SHADING_RATE,
-            gfx.LoadOp.LOAD, gfx.StoreOp.DISCARD,
-            gfx.ClearFlagBit.NONE,
-            new gfx.Color(0, 0, 0, 0)));
+    // forwardPass.addRasterView('shadingRate',
+    //     new rendering.RasterView('_',
+    //         rendering.AccessType.READ, rendering.AttachmentType.SHADING_RATE,
+    //         gfx.LoadOp.LOAD, gfx.StoreOp.DISCARD,
+    //         gfx.ClearFlagBit.NONE,
+    //         new gfx.Color(0, 0, 0, 0)));
 
     forwardPass
         .addQueue(rendering.QueueHint.RENDER_OPAQUE)
@@ -129,6 +130,18 @@ export function buildNativeForwardPass (camera, ppl: rendering.Pipeline) {
         .addSceneOfCamera(camera, new rendering.LightInfo(),
             rendering.SceneFlags.UI);
     forwardPass.showStatistics = true;
+}
+
+export function buildCustomPass(target, camera, ppl: rendering.Pipeline) {
+    const area = getRenderArea(camera, camera.window.width, camera.window.height);
+    const width = area.width;
+    const height = area.height;
+
+    const forwardPass = ppl.addRasterPass(width, height, 'default');
+    forwardPass.addRenderTarget(target, '_', gfx.LoadOp.LOAD, gfx.StoreOp.STORE);
+    forwardPass.setViewport(new gfx.Viewport(area.x, area.y, width, height));
+    forwardPass.addQueue(rendering.QueueHint.RENDER_OPAQUE).setCustomBehavior("CustomSDK_Queue0");
+    forwardPass.setCustomBehavior("CustomSDK_Pass0");
 }
 
 export function buildWebPipeline (cameras: renderer.scene.Camera[], pipeline: rendering.Pipeline) {
@@ -163,10 +176,12 @@ export class TestCustomPipeline implements rendering.PipelineBuilder {
             buildWebPipeline(cameras, pipeline);
         } else if (csMat != null) {
             // compute pass
-            buildNativeComputePass(cameras[0], pipeline);
+            // buildNativeComputePass(cameras[0], pipeline);
 
             // forwrad pass
-            buildNativeForwardPass(cameras[0], pipeline);
+            buildNativeForwardPass2(cameras[0], pipeline);
+
+            buildCustomPass(`forwardColor`, cameras[0], pipeline);
 
             // copy backbuffer
             // buildNativeCopyPass(cameras[0], pipeline);
@@ -175,5 +190,5 @@ export class TestCustomPipeline implements rendering.PipelineBuilder {
 }
 
 game.on(Game.EVENT_RENDERER_INITED, () => {
-    rendering.setCustomPipeline('Custom', new TestCustomPipeline);
+    rendering.setCustomPipeline('CustomTest', new TestCustomPipeline);
 });
