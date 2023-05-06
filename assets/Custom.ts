@@ -76,10 +76,10 @@ export function buildNativeForwardPass2 (camera, ppl: rendering.Pipeline) {
     const forwardPassRTName = `forwardColor`;
     const forwardPassDSName = `forwardDS`;
     if (!ppl.containsResource(forwardPassRTName)) {
-        ppl.addRenderTexture(forwardPassRTName, gfx.Format.BGRA8, width, height, camera.window);
+        ppl.addRenderTarget(forwardPassRTName, gfx.Format.BGRA8, width, height, rendering.ResourceResidency.MANAGED);
         ppl.addDepthStencil(forwardPassDSName, gfx.Format.DEPTH_STENCIL, width, height, rendering.ResourceResidency.MANAGED);
     } else {
-        ppl.updateRenderWindow(forwardPassRTName, camera.window);
+        ppl.updateRenderTarget(forwardPassRTName, width, height);
         ppl.updateDepthStencil(forwardPassDSName, width, height);
     }
 
@@ -170,6 +170,57 @@ export function buildWebPipeline (cameras: renderer.scene.Camera[], pipeline: re
     buildUIPass(camera, pipeline);
 }
 
+function buildNativeVRSComputePass(camera:renderer.scene.Camera, ppl: rendering.Pipeline) {
+    function setPassInput(inputName: string, shaderName:string) {
+        if (ppl.containsResource(inputName)) {
+            const computeView = new rendering.ComputeView();
+            computeView.name = shaderName;
+            computeView.accessType = rendering.AccessType.READ;
+            tc.addComputeView(inputName, computeView);
+        }
+    }
+
+    const area = getRenderArea(camera, camera.window.width, camera.window.height);
+    const width = area.width;
+    const height = area.height;
+    const tileSize = 16;
+    const shadingRateImageWidth = (width + tileSize - 1) / tileSize;
+    const shadingRateImageHeight = (height + tileSize - 1) / tileSize;
+
+    let finalImage = "forwardColor";
+
+    if (!ppl.containsResource("shadingRate")) {
+        ppl.addShadingRateTexture("shadingRate", shadingRateImageWidth, shadingRateImageHeight, rendering.ResourceResidency.MANAGED);
+    }
+
+    const tc = ppl.addComputePass("adaptive-vrs");
+    tc.setCustomBehavior("CustomSDK_Compute0");
+    setPassInput(finalImage, "final_image");
+
+    const shadingRateView = new rendering.ComputeView("shading_rate", rendering.AccessType.WRITE);
+
+    tc.addComputeView("shadingRate", shadingRateView);
+    tc.addQueue();
+}
+
+export function buildPresentPass (camera, ppl) {
+
+    const area = getRenderArea(camera, camera.window.width, camera.window.height);
+    const width = area.width;
+    const height = area.height;
+    const presentImage = 'swapchain_out';
+
+    if (!ppl.containsResource(presentImage)) {
+        ppl.addRenderTexture(presentImage, gfx.Format.BGRA8, width, height, camera.window);
+    } else {
+        ppl.updateRenderWindow(presentImage, camera.window);
+    }
+
+    const cc = ppl.addCopyPass();
+    cc.addPair(new rendering.CopyPair('forwardColor', presentImage, 1, 1, 0, 0, 0, 0, 0, 0));
+
+}
+
 export class TestCustomPipeline implements rendering.PipelineBuilder {
     setup(cameras: renderer.scene.Camera[], pipeline: rendering.Pipeline): void {
         if (!JSB) {
@@ -181,7 +232,10 @@ export class TestCustomPipeline implements rendering.PipelineBuilder {
             // forwrad pass
             buildNativeForwardPass2(cameras[0], pipeline);
 
-            buildCustomPass(`forwardColor`, cameras[0], pipeline);
+            //buildCustomPass(`forwardColor`, cameras[0], pipeline);
+            buildNativeVRSComputePass(cameras[0], pipeline);
+
+            buildPresentPass(cameras[0], pipeline);
 
             // copy backbuffer
             // buildNativeCopyPass(cameras[0], pipeline);
