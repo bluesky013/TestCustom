@@ -4,7 +4,7 @@
   "_objFlags": 0,
   "_native": "",
   "_effectAsset": {
-    "__uuid__": "15a26ad5-36e4-40fe-b405-324433e89570",
+    "__uuid__": "6ccf198c-6409-43fb-ae54-719e054579e9",
     "__expectedType__": "cc.EffectAsset"
   },
   "_techIdx": 0,
@@ -13,7 +13,9 @@
   ],
   "_states": [
     {
-      "rasterizerState": {},
+      "rasterizerState": {
+        "cullMode": 0
+      },
       "depthStencilState": {},
       "blendState": {
         "blendColor": {},

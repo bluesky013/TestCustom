@@ -42,13 +42,16 @@ CCProgram test-cs %{
   #pragma rate final_image pass
   layout (set = 0, binding = 0) uniform sampler2D final_image;
 
+  #pragma rate depth_image pass
+  layout (set = 0, binding = 1) uniform sampler2D depth_image;
+
   #pragma rate shading_buffer pass
-  layout (set = 0, binding = 1) buffer shading_buffer {
+  layout (set = 0, binding = 2) buffer shading_buffer {
     uvec4 data[];
   };
 
   #pragma rate shading_rate pass
-  layout (set = 0, binding = 2, r8ui) uniform uimage2D shading_rate;
+  layout (set = 0, binding = 3, r8ui) uniform uimage2D shading_rate;
 
   float ComputeLuminance(vec3 color)
   {

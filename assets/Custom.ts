@@ -7,9 +7,80 @@ import { AntiAliasing,
 
 let csMat: Material = null;
 
+let sub0Mat: Material = null;
+let sub1Mat: Material = null;
+let sub2Mat: Material = null;
+
 resources.load("compute_mat", Material, (err, material) => {
     csMat = material;
 });
+
+resources.load('custom-sub0', Material, (error, material) => {
+    sub0Mat = material;
+});
+
+resources.load('custom-sub1', Material, (error, material) => {
+    sub1Mat = material;
+});
+
+resources.load('custom-sub2', Material, (error, material) => {
+    sub2Mat = material;
+});
+
+function addOrUpdateRenderTarget(name: string, format: gfx.Format, width: number, height: number, residency: rendering.ResourceResidency, pipeline: rendering.Pipeline) {
+    if (!pipeline.containsResource(name)) {
+        pipeline.addRenderTarget(name, format, width, height, residency);
+    } else {
+        pipeline.updateRenderTarget(name, width, height);
+    }
+}
+
+export function buildProgrammableBlendPass(camera: renderer.scene.Camera, pipeline: rendering.Pipeline) {
+    const area = getRenderArea(camera, camera.window.width, camera.window.height);
+    const width = area.width;
+    const height = area.height;
+
+    addOrUpdateRenderTarget("c0", gfx.Format.RGBA8, width, height, rendering.ResourceResidency.MEMORYLESS, pipeline);
+    addOrUpdateRenderTarget("c1", gfx.Format.RGBA8, width, height, rendering.ResourceResidency.MEMORYLESS, pipeline);
+    addOrUpdateRenderTarget("c2", gfx.Format.RGBA8, width, height, rendering.ResourceResidency.MEMORYLESS, pipeline);
+    addOrUpdateRenderTarget("c3", gfx.Format.RGBA8, width, height, rendering.ResourceResidency.MEMORYLESS, pipeline);
+    addOrUpdateRenderTarget("c4", gfx.Format.RGBA8, width, height, rendering.ResourceResidency.MANAGED, pipeline);
+    // addOrUpdateRenderTarget("ds", gfx.Format.DEPTH, width, height, rendering.ResourceResidency.MEMORYLESS, pipeline);
+
+    const clearColor = new gfx.Color(0, 0, 0, 0);
+    const builder = pipeline.addRenderPass(width, height, 'default');
+    const subpass0 = builder.addRenderSubpass('custom-sub0');
+    subpass0.addRenderTarget("c0", rendering.AccessType.WRITE, "_", gfx.LoadOp.CLEAR, gfx.StoreOp.DISCARD, clearColor);
+    subpass0.addRenderTarget("c1", rendering.AccessType.WRITE, "_", gfx.LoadOp.CLEAR, gfx.StoreOp.DISCARD, clearColor);
+    subpass0.addRenderTarget("c2", rendering.AccessType.WRITE, "_", gfx.LoadOp.CLEAR, gfx.StoreOp.DISCARD, clearColor);
+    subpass0.addRenderTarget("c3", rendering.AccessType.WRITE, "_", gfx.LoadOp.CLEAR, gfx.StoreOp.DISCARD, clearColor);
+    // subpass0.addDepthStencil("ds", rendering.AccessType.WRITE, "_", gfx.LoadOp.CLEAR, gfx.StoreOp.DISCARD);
+
+    subpass0
+        .addQueue(rendering.QueueHint.RENDER_OPAQUE)
+        .addFullscreenQuad(sub0Mat, 0);
+
+    const subpass1 = builder.addRenderSubpass('custom-sub1');
+    subpass1.addRenderTarget("c0", rendering.AccessType.READ, "c0", gfx.LoadOp.DISCARD, gfx.StoreOp.DISCARD, clearColor);
+    subpass1.addRenderTarget("c1", rendering.AccessType.READ, "c1", gfx.LoadOp.DISCARD, gfx.StoreOp.DISCARD, clearColor);
+    subpass1.addRenderTarget("c4", rendering.AccessType.WRITE, "color", gfx.LoadOp.CLEAR, gfx.StoreOp.STORE, clearColor);
+    
+    // subpass1.addDepthStencil("ds", rendering.AccessType.READ, "inds", gfx.LoadOp.DISCARD, gfx.StoreOp.DISCARD);
+
+    subpass1
+        .addQueue(rendering.QueueHint.RENDER_OPAQUE)
+        .addFullscreenQuad(sub1Mat, 0);
+
+    const subpass2 = builder.addRenderSubpass('custom-sub2');
+    subpass2.addRenderTarget("c3", rendering.AccessType.READ, "c1", gfx.LoadOp.DISCARD, gfx.StoreOp.DISCARD, clearColor);
+    subpass2.addRenderTarget("c2", rendering.AccessType.READ, "c0", gfx.LoadOp.DISCARD, gfx.StoreOp.DISCARD, clearColor);
+    subpass2.addRenderTarget("c4", rendering.AccessType.WRITE, "color", gfx.LoadOp.DISCARD, gfx.StoreOp.STORE, clearColor);
+    // subpass2.addDepthStencil("ds", rendering.AccessType.READ, "inds", gfx.LoadOp.DISCARD, gfx.StoreOp.DISCARD);
+
+    subpass2
+        .addQueue(rendering.QueueHint.RENDER_OPAQUE)
+        .addFullscreenQuad(sub2Mat, 0);
+}
 
 export function buildNativeCopyPass(camera: renderer.scene.Camera, ppl: rendering.Pipeline) {
     const area = getRenderArea(camera, camera.window.width, camera.window.height);
@@ -20,8 +91,7 @@ export function buildNativeCopyPass(camera: renderer.scene.Camera, ppl: renderin
         ppl.addRenderTarget('forwardColor_copy', gfx.Format.RGBA8, width, height, rendering.ResourceResidency.MANAGED);
     }
 
-    const cc = ppl.addCopyPass();
-    cc.addPair(new rendering.CopyPair('forwardColor', 'forwardColor_copy', 1, 1, 0, 0, 0, 0, 0, 0));
+    const cc = ppl.addCopyPass([new rendering.CopyPair('forwardColor', 'forwardColor_copy', 1, 1, 0, 0, 0, 0, 0, 0)]);
 }
 
 export function buildNativeComputePass (camera: renderer.scene.Camera, ppl: rendering.Pipeline) {
@@ -76,15 +146,15 @@ export function buildNativeForwardPass2 (camera, ppl: rendering.Pipeline) {
     const forwardPassRTName = `forwardColor`;
     const forwardPassDSName = `forwardDS`;
     if (!ppl.containsResource(forwardPassRTName)) {
-        ppl.addRenderTarget(forwardPassRTName, gfx.Format.BGRA8, width, height, rendering.ResourceResidency.MANAGED);
+        ppl.addRenderWindow(forwardPassRTName, gfx.Format.BGRA8, width, height, camera.window);
         ppl.addDepthStencil(forwardPassDSName, gfx.Format.DEPTH_STENCIL, width, height, rendering.ResourceResidency.MANAGED);
     } else {
-        ppl.updateRenderTarget(forwardPassRTName, width, height);
+        ppl.updateRenderWindow(forwardPassRTName, camera.window);
         ppl.updateDepthStencil(forwardPassDSName, width, height);
     }
 
     // Passes
-    const forwardPass = ppl.addRasterPass(width, height, 'default');
+    const forwardPass = ppl.addRenderPass(width, height, 'default');
     forwardPass.name = `forwardPass`;
     forwardPass.setViewport(new gfx.Viewport(area.x, area.y, width, height));
 
@@ -137,8 +207,8 @@ export function buildCustomPass(target, camera, ppl: rendering.Pipeline) {
     const width = area.width;
     const height = area.height;
 
-    const forwardPass = ppl.addRasterPass(width, height, 'default');
-    forwardPass.addRenderTarget(target, '_', gfx.LoadOp.LOAD, gfx.StoreOp.STORE);
+    const forwardPass = ppl.addRenderPass(width, height, 'default');
+    forwardPass.addRenderTarget(target, gfx.LoadOp.LOAD, gfx.StoreOp.STORE);
     forwardPass.setViewport(new gfx.Viewport(area.x, area.y, width, height));
     forwardPass.addQueue(rendering.QueueHint.RENDER_OPAQUE).setCustomBehavior("CustomSDK_Queue0");
     forwardPass.setCustomBehavior("CustomSDK_Pass0");
@@ -188,6 +258,7 @@ function buildNativeVRSComputePass(camera:renderer.scene.Camera, ppl: rendering.
     const shadingRateImageHeight = (height + tileSize - 1) / tileSize;
 
     let finalImage = "forwardColor";
+    let depthImage = "forwardDS";
 
     if (!ppl.containsResource("shadingRate")) {
         ppl.addShadingRateTexture("shadingRate", shadingRateImageWidth, shadingRateImageHeight, rendering.ResourceResidency.MANAGED);
@@ -195,7 +266,12 @@ function buildNativeVRSComputePass(camera:renderer.scene.Camera, ppl: rendering.
 
     const tc = ppl.addComputePass("adaptive-vrs");
     tc.setCustomBehavior("CustomSDK_Compute0");
+
     setPassInput(finalImage, "final_image");
+    setPassInput(depthImage, "depth_image");
+
+    tc.setMat4("view", camera.matView);
+    tc.setMat4("project", camera.matProj);
 
     const shadingRateView = new rendering.ComputeView("shading_rate", rendering.AccessType.WRITE);
 
@@ -229,13 +305,16 @@ export class TestCustomPipeline implements rendering.PipelineBuilder {
             // compute pass
             // buildNativeComputePass(cameras[0], pipeline);
 
+            // build subpass
+            buildProgrammableBlendPass(cameras[0], pipeline);
+
             // forwrad pass
             buildNativeForwardPass2(cameras[0], pipeline);
 
             //buildCustomPass(`forwardColor`, cameras[0], pipeline);
-            buildNativeVRSComputePass(cameras[0], pipeline);
+            // buildNativeVRSComputePass(cameras[0], pipeline);
 
-            buildPresentPass(cameras[0], pipeline);
+            // buildPresentPass(cameras[0], pipeline);
 
             // copy backbuffer
             // buildNativeCopyPass(cameras[0], pipeline);
